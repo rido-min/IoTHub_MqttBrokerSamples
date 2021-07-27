@@ -6,11 +6,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Program_OLD.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\dotnet_publish\SharedAccessSignatureBuilder.cs" Link="SharedAccessSignatureBuilder.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MQTTnet" Version="3.0.13" />
+    <None Include="Program_OLD.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AzureIoTHubDevices\AzureIoTHubDevices.csproj" />
   </ItemGroup>
 
 </Project>
