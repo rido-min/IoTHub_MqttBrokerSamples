@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,10 +15,18 @@ namespace dotnet_publish
 { 
     class Program
     {
+        // HostName=ridohub2.azure-devices.net;DeviceId=mapDemo;SharedAccessKey=Vyhrl80mH1z3mRd5GKtUojV3X8adq6CibaGHwuW719Q=
+        static string cs = "HostName=testshared02.azure-devices-int.net;DeviceId=cosa1;SharedAccessKey=WCg0jYaADOfFx1aFw69YiT2j+65Hm+GxddawGXZcHJQ=";
         // HostName=broker3.azure-devices.net;DeviceId=client1;SharedAccessKey=ZmAcXR1qdIxScl5JZXztt638MC6i8gtIEVB98IkooZU=
-        static string IoTHubHostname = "broker3.azure-devices.net";
-        static string deviceId = "client1";
-        static string sasKey = "ZmAcXR1qdIxScl5JZXztt638MC6i8gtIEVB98IkooZU=";
+        static string IoTHubHostname = "testshared02.azure-devices-int.net";
+        static string deviceId = "cosa1";
+        static string sasKey = "WCg0jYaADOfFx1aFw69YiT2j+65Hm+GxddawGXZcHJQ=";
+
+        //static string IoTHubHostname = "ridohub2.azure-devices.net";
+        //static string deviceId = "mapDemo";
+        //static string sasKey = "Vyhrl80mH1z3mRd5GKtUojV3X8adq6CibaGHwuW719Q=";
+
+
 
         static async Task Main(string[] args)
         {
@@ -51,23 +61,30 @@ namespace dotnet_publish
                 IgnoreCertificateChainErrors = true,
                 IgnoreCertificateRevocationErrors = true,
                 AllowUntrustedCertificates = true,
-                CertificateValidationHandler = (x) => { return true; }
+                CertificateValidationHandler = (x) => { return true; },
+                SslProtocol = SslProtocols.Tls12
             };
 
-            string username = $"{IoTHubHostname}/{deviceId}/api-version=2019-06-30";
-            var sasBuilder = new SharedAccessSignatureBuilder()
-            {
-                Key = sasKey,
-                KeyName = string.Empty,
-                Target = IoTHubHostname,
-                TimeToLive = TimeSpan.FromSeconds(60)
-            };
-            var token = sasBuilder.ToSignature();
+            var expiry = DateTimeOffset.UtcNow.AddDays(1);
+            var expiryString = expiry.ToUnixTimeMilliseconds().ToString();
+
+            //string username = $"av=2021-06-30-preview&" +
+            //                $"h={IoTHubHostname}&" +
+            //                $"did={deviceId}&" +
+            //                $"am=SAS&" +
+            //                $"se={expiryString}&" +
+            //                $"ca=mqttbrokerE2Etests";
+
+            var auth = new HubV2Auth(cs);
+
+            string username = auth.GetUserName();
+
+            var password = auth.BuildSasToken();
 
             var mqttClientOptionsBuilder = new MqttClientOptionsBuilder()
                 .WithClientId(deviceId)
                 .WithTcpServer(IoTHubHostname, 8883)
-                .WithCredentials(username, token)
+                .WithCredentials(username, password)
                 .WithTls(tlsParameters)
                 .WithCleanSession(true)
                 .Build();
@@ -96,5 +113,12 @@ namespace dotnet_publish
             Console.WriteLine($"Message received\nTopic: {eventArgs.ApplicationMessage.Topic}.\nContent: {Encoding.ASCII.GetString(eventArgs.ApplicationMessage.Payload)}");
             return Task.FromResult(0);
         }
+
+        //public static byte[] BuildSasToken(string did, string sasKey, string expiryString)
+        //{
+        //    var algorithm = new HMACSHA256(Convert.FromBase64String(sasKey));
+        //    string toSign = $"{IoTHubHostname}\n{did}\n\n\n{expiryString}\n";
+        //    return algorithm.ComputeHash(Encoding.UTF8.GetBytes(toSign));
+        //}
     }
 }
